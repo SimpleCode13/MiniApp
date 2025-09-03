@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <title>Run Poizon — калькулятор + игра</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1"/>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <style>
+    :root {
+      --tg-bg: #f4f6f9;
+      --tg-fg: #222;
+      --tg-accent: #0088cc;
+      --card-bg: #fff;
+      --border: #e5e7eb;
+      --shadow: 0 6px 20px rgba(0,0,0,0.1);
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --tg-bg: #0f1115;
+        --tg-fg: #e8e8e8;
+        --tg-accent: #2ea6ff;
+        --card-bg: #171a21;
+        --border: #2a2f3a;
+        --shadow: 0 8px 24px rgba(0,0,0,0.35);
+      }
+    }
+    body {
+      font-family: -apple-system, system-ui, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans";
+      background: var(--tg-bg);
+      color: var(--tg-fg);
+      margin: 0;
+      padding: 16px 16px 90px;
+      display: flex;
+      justify-content: center;
+    }
+    .wrap { width: 100%; max-width: 420px; }
+    .card {
+      background: var(--card-bg);
+      border-radius: 16px;
+      padding: 22px;
+      box-shadow: var(--shadow);
+      text-align: center;
+    }
+    .logo-title {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+    .logo-title img {
+      width: 48px;
+      height: 48px;
+      border-radius: 10px;
+      margin-bottom: 8px;
+    }
+    .logo-title span {
+      color: var(--tg-accent);
+      font-weight: 800;
+      font-size: 20px;
+    }
+    label { display: block; margin: 14px 0 6px; font-weight: 600; text-align: left; }
+    input, select {
+      width: 100%; padding: 12px; border: 1px solid var(--border);
+      border-radius: 12px; background: transparent; color: var(--tg-fg);
+      font-size: 16px; box-sizing: border-box; outline: none;
+    }
+    input:focus, select:focus { border-color: var(--tg-accent); }
+    .btn {
+      width: 100%; padding: 14px; background: var(--tg-accent);
+      border: none; color: white; font-size: 16px; font-weight: 700;
+      border-radius: 12px; cursor: pointer; margin-top: 14px;
+    }
+    .muted { opacity: .8; font-size: 13px; margin-top: 8px; text-align: left; }
+    #result { margin-top: 16px; font-size: 18px; font-weight: 700; white-space: pre-line; text-align: left; }
+
+    /* Нижняя кнопка */
+    .playbar {
+      position: fixed; left:0; right:0; bottom:0;
+      padding: 12px 16px calc(env(safe-area-inset-bottom) + 12px);
+      background: linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,0,0,.06) 10%), var(--tg-bg);
+      display: flex; justify-content: center; border-top: 1px solid var(--border);
+      z-index: 10;
+    }
+    .playbar .play-btn {
+      max-width: 420px; width: calc(100% - 32px);
+      background: var(--tg-accent); color: #fff;
+      border: none; border-radius: 14px; padding: 16px;
+      font-size: 17px; font-weight: 800; box-shadow: var(--shadow);
+    }
+
+    /* Оверлей игры */
+    .overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,.5);
+      display: none; align-items: center; justify-content: center;
+      z-index: 50; backdrop-filter: blur(2px);
+    }
+    .overlay.show { display: flex; }
+    .game-card {
+      width: 96vw; max-width: 480px;
+      background: var(--card-bg); border-radius: 18px;
+      box-shadow: var(--shadow); padding: 12px 12px 18px;
+    }
+    .game-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 4px 6px 10px;
+    }
+    .game-title { font-weight: 800; }
+    .close-btn {
+      border: 1px solid var(--border); background: transparent;
+      color: var(--tg-fg); padding: 6px 10px; border-radius: 10px;
+      font-weight: 700; cursor: pointer;
+    }
+    canvas {
+      width: 100%; height: 260px; border: 1px solid var(--border);
+      border-radius: 14px; background: linear-gradient(#bde0ff,#eaf3ff); display: block;
+    }
+    .game-cta { display: flex; gap: 8px; margin-top: 10px; }
+    .game-cta button {
+      flex: 1; padding: 12px; border-radius: 12px; border: none; font-weight: 800; cursor: pointer;
+    }
+    .primary { background: var(--tg-accent); color: #fff; }
+    .secondary { background: transparent; border: 1px solid var(--border); color: var(--tg-fg); }
+    .score { font-weight: 800; margin-top: 8px; text-align: center; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <div class="logo-title">
+        <img src="poizon.png" alt="Poizon logo">
+        <span>Калькулятор</span>
+      </div>
+      <label for="price">Цена в юанях</label>
+      <input type="number" id="price" placeholder="Например, 500" inputmode="decimal" />
+      <label for="category">Категория</label>
+      <select id="category">
+        <option value="Футболка / майка / рубашка">Футболка / майка / рубашка</option>
+        <option value="Брюки / джинсы">Брюки / джинсы</option>
+        <option value="Худи / толстовка / свитшот">Худи / толстовка / свитшот</option>
+        <option value="Сумка / рюкзак">Сумка / рюкзак</option>
+        <option value="Поясная сумка">Поясная сумка</option>
+        <option value="Шапка/ шарф / носки">Шапка/ шарф / носки</option>
+        <option value="Ветровка / куртка">Ветровка / куртка</option>
+        <option value="Кроссовки / кеды / ботинки">Кроссовки / кеды / ботинки</option>
+        <option value="Зимняя обувь">Зимняя обувь</option>
+      </select>
+      <button class="btn" id="calcBtn">Рассчитать</button>
+      <div id="result"></div>
+      <div class="muted">После расчёта результат отправится в чат бота.</div>
+    </div>
+  </div>
+
+  <div class="playbar">
+    <button class="play-btn" id="openGame">🎮 Играть</button>
+  </div>
+
+  <div class="overlay" id="overlay">
+    <div class="game-card">
+      <div class="game-header">
+        <div class="game-title">🏃‍♂️ Run Poizon</div>
+        <button class="close-btn" id="closeGame">Закрыть</button>
+      </div>
+      <canvas id="game" width="480" height="260"></canvas>
+      <div class="score" id="score">Счёт: 0 • Рекорд: 0</div>
+      <div class="game-cta">
+        <button class="secondary" id="tapBtn">Прыжок</button>
+        <button class="primary" id="restartBtn">Старт/Рестарт</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ====== Calculator ======
+    const formulas = {
+      "Футболка / майка / рубашка": x => (x + (x > 1526 ? x * 0.15 : 0)) * 12 + 772.31 + 1000,
+      "Брюки / джинсы": x => (x + (x > 1526 ? x * 0.15 : 0)) * 12 + 1019.91 + 1000,
+      "Худи / толстовка / свитшот": x => (x + (x > 1526 ? x * 0.15 : 0)) * 12 + 1081.81 + 1000,
+      "Сумка / рюкзак": x => (x + (x > 1526 ? x * 0.15 : 0)) * 12 + 1453.21 + 1000,
+      "Поясная сумка": x => (x + (x > 1526 ? x * 0.15 : 0)) * 12 + 772.31 + 1000,
+      "Шапка/ шарф / носки": x => (x + (x > 1526 ? x * 0.15 : 0)) * 12 + 772.31 + 1000,
+      "Ветровка / куртка": x => (x + (x > 1526 ? x * 0.15 : 0)) * 12 + 1453.21 + 1000,
+      "Кроссовки / кеды / ботинки": x => (x + (x > 1526 ? x * 0.15 : 0)) * 12 + 1733.59 + 1000,
+      "Зимняя обувь": x => (x + (x > 1526 ? x * 0.15 : 0)) * 12 + 2104.99 + 1000
+    };
+    document.getElementById('calcBtn').addEventListener('click', () => {
+      const price = parseFloat(priceEl.value);
+      const category = categoryEl.value;
+      if (isNaN(price)) {
+        resultEl.textContent = "⚠️ Введите корректную цену!";
+        return;
+      }
+      const result = formulas[category](price);
+      resultEl.textContent = `К оплате: ${result.toFixed(2)} ₽\n📦 Категория: ${category}`;
+      try { Telegram.WebApp.sendData(JSON.stringify({ price, category, result })); } catch (e) {}
+    });
+    const priceEl = document.getElementById('price');
+    const categoryEl = document.getElementById('category');
+    const resultEl = document.getElementById('result');
+
+    // ====== Game ======
+    const canvas = document.getElementById('game');
+    const ctx = canvas.getContext('2d');
+    const overlay = document.getElementById('overlay');
+    document.getElementById('openGame').onclick = () => overlay.classList.add('show');
+    document.getElementById('closeGame').onclick = () => overlay.classList.remove('show');
+
+    let groundY = canvas.height - 40;
+    const dino = { x: 30, y: groundY - 40, w: 60, h: 40, vy: 0, onGround: true };
+    const boxImg = new Image();
+    boxImg.src = "sticker.png"; // заменённая коробка
+
+    let obstacles = [];
+    let speed = 4;
+    let gravity = 0.7;
+    let score = 0;
+    let high = parseInt(localStorage.getItem('dino_high')||'0');
+    let playing = false;
+    let lastSpawn = 0;
+    let anim;
+    const scoreEl = document.getElementById('score');
+
+    function setScore() { scoreEl.textContent = `Счёт: ${Math.floor(score)} • Рекорд: ${Math.floor(high)}`; }
+
+    function reset() {
+      obstacles = []; speed = 4; score = 0;
+      dino.y = groundY - dino.h; dino.vy = 0; dino.onGround = true; lastSpawn = 0;
+    }
+    function spawnObstacle() {
+      const h = 25 + Math.random()*30;
+      const branches = 1 + Math.floor(Math.random()*2);
+      obstacles.push({ x: canvas.width+10, y: groundY, h, branches });
+    }
+    function drawCactus(o) {
+      ctx.fillStyle = "#2e7d32";
+      ctx.fillRect(o.x, o.y - o.h, 12, o.h); // ствол
+      if (o.branches > 0) {
+        ctx.fillRect(o.x - 10, o.y - o.h/2, 10, 20);
+        ctx.fillRect(o.x + 12, o.y - o.h/1.5, 10, 25);
+      }
+    }
+    function jump() { if (dino.onGround) { dino.vy = -11.5; dino.onGround = false; } }
+    function update(dt) {
+      dino.vy += gravity; dino.y += dino.vy;
+      if (dino.y >= groundY - dino.h) { dino.y = groundY - dino.h; dino.vy = 0; dino.onGround = true; }
+      for (let o of obstacles) o.x -= speed;
+      obstacles = obstacles.filter(o => o.x + 30 > -10);
+      lastSpawn += dt;
+      if (lastSpawn > Math.max(1300 - speed*40, 600)) { spawnObstacle(); lastSpawn = 0; }
+      speed += 0.0015 * dt/16.7;
+      score += 0.02 * speed * dt/16.7;
+      for (let o of obstacles) {
+        if (dino.x < o.x+12 && dino.x+dino.w > o.x && dino.y < o.y && dino.y+dino.h > o.y-o.h) gameOver();
+      }
+    }
+    function draw() {
+      ctx.clearRect(0,0,canvas.width,canvas.height);
+      ctx.fillStyle = '#3b3b3b';
+      ctx.fillRect(0, groundY+2, canvas.width, 2);
+      ctx.drawImage(boxImg, dino.x, dino.y, dino.w, dino.h);
+      for (let o of obstacles) drawCactus(o);
+      ctx.fillStyle = '#111'; ctx.font = 'bold 16px system-ui, sans-serif';
+      ctx.fillText('Счёт: ' + Math.floor(score), 10, 22);
+    }
+    function loop(ts) {
+      if (!playing) return;
+      const dt = prev ? (ts - prev) : 16.7; prev = ts;
+      update(dt); draw(); anim = requestAnimationFrame(loop);
+    }
+    let prev = 0;
+    function startGame() { reset(); playing = true; prev = 0; cancelAnimationFrame(anim); loop(0); setScore(); }
+    function gameOver() {
+      playing = false; cancelAnimationFrame(anim);
+      if (score > high) { high = score; localStorage.setItem('dino_high', String(Math.floor(high))); }
+      setScore();
+    }
+    document.getElementById('restartBtn').onclick = startGame;
+    document.getElementById('tapBtn').onclick = jump;
+    window.addEventListener('keydown', e => {
+      if (e.code==='Space'||e.code==='ArrowUp'){ e.preventDefault(); jump(); }
+      if (e.code==='Enter') startGame();
+      if (e.code==='Escape') overlay.classList.remove('show');
+    });
+    canvas.addEventListener('touchstart', e => { e.preventDefault(); jump(); }, {passive:false});
+  </script>
+</body>
+</html>
