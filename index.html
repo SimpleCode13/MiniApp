@@ -661,18 +661,24 @@ input::placeholder {
     color: var(--tg-fg);
 }
 
+/* ИСПРАВЛЕНО: Улучшенные стили для кнопок игры Miner - больше padding и лучшее выравнивание текста */
 .game-btn {
-    padding: 16px 28px;
+    padding: 18px 32px; /* Увеличен padding для лучшего отображения текста */
     border: none;
     border-radius: 14px;
     font-weight: 800;
     cursor: pointer;
     transition: all 0.4s ease;
-    margin: 10px 0;
-    min-width: 160px;
+    margin: 12px 0; /* Увеличен margin */
+    min-width: 180px; /* Увеличена минимальная ширина */
     font-size: 16px;
     position: relative;
     overflow: hidden;
+    display: flex; /* Добавлен flexbox для лучшего выравнивания */
+    align-items: center;
+    justify-content: center;
+    text-align: center; /* Центрирование текста */
+    white-space: nowrap; /* Предотвращение переноса текста */
 }
 
 .game-btn::before {
@@ -1106,6 +1112,13 @@ input::placeholder {
 
     #runCanvas {
         height: 240px;
+    }
+    
+    /* Исправления для мобильных устройств */
+    .game-btn {
+        padding: 16px 24px;
+        min-width: 150px;
+        font-size: 15px;
     }
 }
 
@@ -1746,7 +1759,7 @@ class MinerGame {
 }
 
 // ====================
-// Run Game Module (УЛУЧШЕННЫЙ ДИЗАЙН)
+// Run Game Module (ИСПРАВЛЕНО ДРОЖАНИЕ ОБЛАКОВ)
 // ====================
 class RunGame {
     constructor(gameState) {
@@ -1997,11 +2010,14 @@ class RunGame {
         );
     }
 
+    // ИСПРАВЛЕНО: Убрано дрожание облаков
     updateClouds(dt) {
         this.clouds.forEach(cloud => {
             cloud.x -= cloud.speed * dt;
-            cloud.drift += 0.02 * dt;
-            cloud.y = cloud.baseY + Math.sin(cloud.drift) * 5;
+            // Убраны строки drift анимации, которые вызывали дрожание
+            // cloud.drift += 0.02 * dt;
+            // cloud.y = cloud.baseY + Math.sin(cloud.drift) * 5;
+            // Теперь облака движутся плавно только по горизонтали
         });
 
         this.clouds = this.clouds.filter(cloud => cloud.x + cloud.width > 0);
@@ -2074,6 +2090,7 @@ class RunGame {
         this.coins.push(coin);
     }
 
+    // ИСПРАВЛЕНО: Убран параметр drift из объекта облака
     spawnCloud() {
         const cloud = {
             x: this.canvas.width,
@@ -2082,8 +2099,8 @@ class RunGame {
             width: 80 + Math.random() * 120,
             height: 40 + Math.random() * 60,
             speed: 0.8 + Math.random() * 2,
-            alpha: 0.4 + Math.random() * 0.5,
-            drift: 0
+            alpha: 0.4 + Math.random() * 0.5
+            // Убран параметр drift: 0
         };
 
         this.clouds.push(cloud);
@@ -2263,7 +2280,8 @@ class RunGame {
         this.clouds.forEach(cloud => {
             this.ctx.globalAlpha = cloud.alpha * (this.timeOfDay > 0.5 ? 0.6 : 1);
             this.ctx.fillStyle = this.timeOfDay > 0.5 ? '#e0e0e0' : '#ffffff';
-            this.drawCloud(cloud.x, cloud.y, cloud.width, cloud.height);
+            // ИСПРАВЛЕНО: Облака теперь отрисовываются с фиксированной Y позицией (без дрожания)
+            this.drawCloud(cloud.x, cloud.baseY, cloud.width, cloud.height);
         });
         this.ctx.restore();
     }
@@ -2273,7 +2291,7 @@ class RunGame {
         const segments = 5;
         for (let i = 0; i < segments; i++) {
             const segmentX = x + (width / segments) * i;
-            const radius = height * (0.3 + Math.random() * 0.3);
+            const radius = height * (0.3 + Math.random() * 0.1); // Уменьшен случайный фактор для стабильности
             this.ctx.arc(segmentX + width * 0.2, y + height * 0.6, radius, 0, Math.PI * 2);
         }
         this.ctx.fill();
