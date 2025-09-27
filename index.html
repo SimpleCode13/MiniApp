@@ -1113,7 +1113,7 @@ input::placeholder {
     #runCanvas {
         height: 240px;
     }
-    
+
     /* Исправления для мобильных устройств */
     .game-btn {
         padding: 16px 24px;
@@ -2099,7 +2099,7 @@ class RunGame {
             width: 80 + Math.random() * 120,
             height: 40 + Math.random() * 60,
             speed: 0.8 + Math.random() * 2,
-            alpha: 0.4 + Math.random() * 0.5
+            alpha:  0.15 + Math.random() * 0.15
             // Убран параметр drift: 0
         };
 
@@ -2278,10 +2278,27 @@ class RunGame {
     drawClouds() {
         this.ctx.save();
         this.clouds.forEach(cloud => {
-            this.ctx.globalAlpha = cloud.alpha * (this.timeOfDay > 0.5 ? 0.6 : 1);
-            this.ctx.fillStyle = this.timeOfDay > 0.5 ? '#e0e0e0' : '#ffffff';
-            // ИСПРАВЛЕНО: Облака теперь отрисовываются с фиксированной Y позицией (без дрожания)
-            this.drawCloud(cloud.x, cloud.baseY, cloud.width, cloud.height);
+            // extra transparency multiplier to make clouds more subtle
+            const alpha = cloud.alpha * (this.timeOfDay > 0.5 ? 0.6 : 1) * 0.6;
+            this.ctx.globalAlpha = alpha;
+            if (this.images && this.images.cloud) {
+                // draw cloud image (cloud.png) scaled to cloud.width/cloud.height
+                const img = this.images.cloud;
+                // position image so it centers vertically on baseY
+                const drawX = cloud.x;
+                const drawY = cloud.baseY - cloud.height * 0.5;
+                try {
+                    this.ctx.drawImage(img, drawX, drawY, cloud.width, cloud.height);
+                } catch (e) {
+                    // fallback to vector cloud if drawImage fails
+                    this.ctx.fillStyle = this.timeOfDay > 0.5 ? '#e0e0e0' : '#ffffff';
+                    this.drawCloud(cloud.x, cloud.baseY, cloud.width, cloud.height);
+                }
+            } else {
+                this.ctx.fillStyle = this.timeOfDay > 0.5 ? '#e0e0e0' : '#ffffff';
+                // fallback: vector cloud (kept for compatibility)
+                this.drawCloud(cloud.x, cloud.baseY, cloud.width, cloud.height);
+            }
         });
         this.ctx.restore();
     }
